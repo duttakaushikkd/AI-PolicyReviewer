@@ -1,38 +1,24 @@
 "use client";
 
-import { useCallback, useEffect, useState } from "react";
+import { useEffect } from "react";
 import ClaimCard from "@/components/ClaimCard";
 import Nav from "@/components/Nav";
-import {
-  loadClientStore,
-  pickRicherStore,
-  saveClientStore,
-  subscribeToClientStore,
-} from "@/lib/client-store";
+import { loadClientStore, pickRicherStore, saveClientStore } from "@/lib/client-store";
+import { useClientStore } from "@/lib/use-client-store";
 
 export default function InboxPage() {
-  const [claims, setClaims] = useState(() =>
-    loadClientStore().claims.filter((claim) => claim.status === "escalated"),
-  );
-
-  const applyStore = useCallback((store) => {
-    setClaims((store.claims || []).filter((claim) => claim.status === "escalated"));
-  }, []);
+  const store = useClientStore();
+  const claims = store.claims.filter((claim) => claim.status === "escalated");
 
   useEffect(() => {
-    const unsubscribe = subscribeToClientStore(applyStore);
-
     fetch("/api/claims", { cache: "no-store" })
       .then((response) => response.json())
       .then((payload) => {
         const merged = pickRicherStore(payload, loadClientStore());
         saveClientStore(merged);
-        applyStore(merged);
       })
       .catch(() => {});
-
-    return unsubscribe;
-  }, [applyStore]);
+  }, []);
 
   return (
     <div className="page">

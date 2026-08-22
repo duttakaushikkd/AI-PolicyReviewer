@@ -5,36 +5,18 @@ import Link from "next/link";
 import { useParams } from "next/navigation";
 import HumanDecision from "@/components/HumanDecision";
 import Nav from "@/components/Nav";
-import { loadClientStore, subscribeToClientStore } from "@/lib/client-store";
 import { formatAction, formatMoney } from "@/lib/format";
+import { useClientStore, useHydrated } from "@/lib/use-client-store";
 
 export default function ClaimWorkspace() {
   const { id } = useParams();
-  const initial = loadClientStore();
-  const initialClaim = initial.claims.find((item) => item.id === id) || null;
-  const [claim, setClaim] = useState(initialClaim);
-  const [reviews, setReviews] = useState(
-    initial.reviews
-      .filter((review) => review.claim_id === id)
-      .sort((a, b) => (a.created_at < b.created_at ? 1 : -1)),
-  );
+  const store = useClientStore();
+  const hydrated = useHydrated();
+  const claim = store.claims.find((item) => item.id === id) || null;
+  const reviews = store.reviews
+    .filter((review) => review.claim_id === id)
+    .sort((a, b) => (a.created_at < b.created_at ? 1 : -1));
   const [policies, setPolicies] = useState([]);
-  const [missing, setMissing] = useState(!initialClaim);
-
-  useEffect(() => {
-    const sync = () => {
-      const store = loadClientStore();
-      const found = store.claims.find((item) => item.id === id) || null;
-      const claimReviews = store.reviews
-        .filter((review) => review.claim_id === id)
-        .sort((a, b) => (a.created_at < b.created_at ? 1 : -1));
-      setClaim(found);
-      setReviews(claimReviews);
-      setMissing(!found);
-    };
-    queueMicrotask(sync);
-    return subscribeToClientStore(sync);
-  }, [id]);
 
   useEffect(() => {
     fetch("/api/policies", { cache: "no-store" })
@@ -43,12 +25,11 @@ export default function ClaimWorkspace() {
       .catch(() => {});
   }, []);
 
-  if (missing && !claim) {
+  if (!hydrated) {
     return (
       <div className="page">
         <Nav />
-        <p className="error">Claim not found in this browser session. Load sample claims again from the dashboard.</p>
-        <Link href="/">Back to queues</Link>
+        <p className="hint">Loading case…</p>
       </div>
     );
   }
@@ -57,7 +38,8 @@ export default function ClaimWorkspace() {
     return (
       <div className="page">
         <Nav />
-        <p className="hint">Loading case…</p>
+        <p className="error">Claim not found in this browser session. Load sample claims again from the dashboard.</p>
+        <Link href="/">Back to queues</Link>
       </div>
     );
   }

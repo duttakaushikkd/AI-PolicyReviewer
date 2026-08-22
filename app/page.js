@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useState } from "react";
+import { useEffect } from "react";
 import ClaimCard from "@/components/ClaimCard";
 import ClaimForm from "@/components/ClaimForm";
 import Nav from "@/components/Nav";
@@ -10,30 +10,22 @@ import {
   loadClientStore,
   pickRicherStore,
   saveClientStore,
-  subscribeToClientStore,
 } from "@/lib/client-store";
+import { useClientStore } from "@/lib/use-client-store";
 
 export default function Dashboard() {
-  const [claims, setClaims] = useState(() => loadClientStore().claims);
-
-  const applyStore = useCallback((store) => {
-    setClaims(store.claims || []);
-  }, []);
+  const store = useClientStore();
+  const claims = store.claims;
 
   useEffect(() => {
-    const unsubscribe = subscribeToClientStore(applyStore);
-
     fetch("/api/claims", { cache: "no-store" })
       .then((response) => response.json())
       .then((payload) => {
         const merged = pickRicherStore(payload, loadClientStore());
         saveClientStore(merged);
-        applyStore(merged);
       })
       .catch(() => {});
-
-    return unsubscribe;
-  }, [applyStore]);
+  }, []);
 
   const summary = countsFromClaims(claims);
   const autoClaims = claims.filter((claim) => claim.status === "auto_resolved");
