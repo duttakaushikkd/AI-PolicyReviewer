@@ -3,7 +3,7 @@ import path from "node:path";
 import { expectedRouteForSample } from "../lib/gates.js";
 
 const samples = JSON.parse(
-  await readFile(path.join(process.cwd(), "data", "sample_claims.json"), "utf8"),
+  await readFile(path.join(process.cwd(), "customer_data", "sample_claims.json"), "utf8"),
 );
 
 const expected = {

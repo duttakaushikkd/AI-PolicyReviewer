@@ -1,6 +1,6 @@
 # AI Policy Reviewer
 
-Local demo that reviews return/warranty claims against `data/return_policy_kb.json`. Simple claims are auto-resolved; high-value, repeat, or ambiguous claims go to a human inbox.
+Local demo that reviews return/warranty claims against `policy/return_policy_kb.json`. Sample claims live in `customer_data/sample_claims.json`. Simple claims are auto-resolved; high-value, repeat, or ambiguous claims go to a human inbox.
 
 ## Setup
 

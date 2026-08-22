@@ -9,7 +9,7 @@ export const maxDuration = 120;
 
 export async function POST() {
   try {
-    const filePath = path.join(process.cwd(), "data", "sample_claims.json");
+    const filePath = path.join(process.cwd(), "customer_data", "sample_claims.json");
     const samples = JSON.parse(await readFile(filePath, "utf8"));
     const results = [];
 
