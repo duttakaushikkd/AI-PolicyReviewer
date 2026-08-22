@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { counts, listClaims, newId } from "@/lib/db";
+import { getStoreSnapshot, newId } from "@/lib/db";
 import { runReviewPipeline } from "@/lib/review-pipeline";
 
 export const runtime = "nodejs";
@@ -7,8 +7,11 @@ export const dynamic = "force-dynamic";
 
 export async function GET(request) {
   const status = request.nextUrl.searchParams.get("status") || undefined;
-  const [claims, summary] = await Promise.all([listClaims(status), counts()]);
-  return NextResponse.json({ claims, counts: summary });
+  const snapshot = await getStoreSnapshot();
+  const claims = status
+    ? snapshot.claims.filter((claim) => claim.status === status)
+    : snapshot.claims;
+  return NextResponse.json({ ...snapshot, claims });
 }
 
 export async function POST(request) {
@@ -30,7 +33,8 @@ export async function POST(request) {
       claim_text: body.claim_text,
     });
 
-    return NextResponse.json(result);
+    const snapshot = await getStoreSnapshot();
+    return NextResponse.json({ ...result, ...snapshot });
   } catch (error) {
     return NextResponse.json(
       { error: error.message || "Failed to review claim." },

@@ -1,7 +1,12 @@
 "use client";
 
 import { useState } from "react";
-import { useRouter } from "next/navigation";
+import {
+  applyHumanDecisionLocally,
+  loadClientStore,
+  pickRicherStore,
+  saveClientStore,
+} from "@/lib/client-store";
 
 const HUMAN_ACTIONS = [
   { id: "approve_refund", label: "Approve refund" },
@@ -12,7 +17,6 @@ const HUMAN_ACTIONS = [
 ];
 
 export default function HumanDecision({ claimId }) {
-  const router = useRouter();
   const [notes, setNotes] = useState("");
   const [error, setError] = useState("");
   const [busy, setBusy] = useState(false);
@@ -27,10 +31,27 @@ export default function HumanDecision({ claimId }) {
         body: JSON.stringify({ action, notes }),
       });
       const data = await response.json();
-      if (!response.ok) throw new Error(data.error || "Decision failed");
+      const local = loadClientStore();
+      if (response.ok && (data.claims?.length || data.claim)) {
+        const snapshot = data.claims
+          ? pickRicherStore(data, local)
+          : applyHumanDecisionLocally(local, claimId, {
+              action,
+              notes,
+              review: data.review,
+            });
+        saveClientStore(snapshot);
+      } else {
+        saveClientStore(applyHumanDecisionLocally(local, claimId, { action, notes }));
+        if (!response.ok) {
+          setError("Saved in this browser. Server inbox is ephemeral on Vercel.");
+        }
+      }
       setNotes("");
-      router.refresh();
     } catch (err) {
+      saveClientStore(
+        applyHumanDecisionLocally(loadClientStore(), claimId, { action, notes }),
+      );
       setError(err.message);
     } finally {
       setBusy(false);

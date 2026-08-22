@@ -1,6 +1,7 @@
 import { readFile } from "node:fs/promises";
 import path from "node:path";
 import { NextResponse } from "next/server";
+import { getStoreSnapshot } from "@/lib/db";
 import { runReviewPipeline } from "@/lib/review-pipeline";
 
 export const runtime = "nodejs";
@@ -25,7 +26,8 @@ export async function POST() {
       });
     }
 
-    return NextResponse.json({ results });
+    const snapshot = await getStoreSnapshot();
+    return NextResponse.json({ results, ...snapshot });
   } catch (error) {
     return NextResponse.json(
       { error: error.message || "Failed to seed claims." },

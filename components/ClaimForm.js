@@ -1,10 +1,14 @@
 "use client";
 
 import { useState } from "react";
-import { useRouter } from "next/navigation";
+import {
+  loadClientStore,
+  mergeClaimIntoStore,
+  pickRicherStore,
+  saveClientStore,
+} from "@/lib/client-store";
 
 export default function ClaimForm() {
-  const router = useRouter();
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
   const [form, setForm] = useState({
@@ -36,8 +40,12 @@ export default function ClaimForm() {
       });
       const payload = await response.json();
       if (!response.ok) throw new Error(payload.error || "Review failed");
+      let snapshot = pickRicherStore(payload, loadClientStore());
+      if (payload.claim) {
+        snapshot = mergeClaimIntoStore(snapshot, payload.claim, payload.review);
+      }
+      saveClientStore(snapshot);
       setForm((current) => ({ ...current, claim_text: "" }));
-      router.refresh();
     } catch (err) {
       setError(err.message);
     } finally {

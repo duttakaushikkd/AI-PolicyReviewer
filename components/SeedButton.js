@@ -1,10 +1,13 @@
 "use client";
 
 import { useState } from "react";
-import { useRouter } from "next/navigation";
+import {
+  loadClientStore,
+  pickRicherStore,
+  saveClientStore,
+} from "@/lib/client-store";
 
 export default function SeedButton() {
-  const router = useRouter();
   const [seeding, setSeeding] = useState(false);
   const [message, setMessage] = useState("");
 
@@ -15,10 +18,11 @@ export default function SeedButton() {
       const response = await fetch("/api/claims/seed", { method: "POST" });
       const payload = await response.json();
       if (!response.ok) throw new Error(payload.error || "Seed failed");
+      const snapshot = pickRicherStore(payload, loadClientStore());
+      saveClientStore(snapshot);
       const auto = payload.results.filter((r) => r.status === "auto_resolved").length;
       const inbox = payload.results.filter((r) => r.status === "escalated").length;
       setMessage(`Seed complete: ${auto} auto-reviewed, ${inbox} sent to inbox.`);
-      router.refresh();
     } catch (error) {
       setMessage(error.message);
     } finally {

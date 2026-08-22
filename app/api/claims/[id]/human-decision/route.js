@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { getStoreSnapshot } from "@/lib/db";
 import { applyHumanDecision } from "@/lib/review-pipeline";
 
 export const runtime = "nodejs";
@@ -12,7 +13,8 @@ export async function POST(request, { params }) {
       action: body.action,
       notes: body.notes || "",
     });
-    return NextResponse.json(result);
+    const snapshot = await getStoreSnapshot();
+    return NextResponse.json({ ...result, ...snapshot });
   } catch (error) {
     return NextResponse.json(
       { error: error.message || "Failed to save decision." },

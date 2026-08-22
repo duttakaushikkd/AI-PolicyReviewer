@@ -1,11 +1,38 @@
+"use client";
+
+import { useCallback, useEffect, useState } from "react";
 import ClaimCard from "@/components/ClaimCard";
 import Nav from "@/components/Nav";
-import { listClaims } from "@/lib/db";
+import {
+  loadClientStore,
+  pickRicherStore,
+  saveClientStore,
+  subscribeToClientStore,
+} from "@/lib/client-store";
 
-export const dynamic = "force-dynamic";
+export default function InboxPage() {
+  const [claims, setClaims] = useState(() =>
+    loadClientStore().claims.filter((claim) => claim.status === "escalated"),
+  );
 
-export default async function InboxPage() {
-  const claims = await listClaims("escalated");
+  const applyStore = useCallback((store) => {
+    setClaims((store.claims || []).filter((claim) => claim.status === "escalated"));
+  }, []);
+
+  useEffect(() => {
+    const unsubscribe = subscribeToClientStore(applyStore);
+
+    fetch("/api/claims", { cache: "no-store" })
+      .then((response) => response.json())
+      .then((payload) => {
+        const merged = pickRicherStore(payload, loadClientStore());
+        saveClientStore(merged);
+        applyStore(merged);
+      })
+      .catch(() => {});
+
+    return unsubscribe;
+  }, [applyStore]);
 
   return (
     <div className="page">

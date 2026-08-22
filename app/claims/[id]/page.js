@@ -1,25 +1,68 @@
+"use client";
+
+import { useEffect, useState } from "react";
 import Link from "next/link";
-import { notFound } from "next/navigation";
+import { useParams } from "next/navigation";
 import HumanDecision from "@/components/HumanDecision";
 import Nav from "@/components/Nav";
-import { getClaim, getReviewsForClaim } from "@/lib/db";
+import { loadClientStore, subscribeToClientStore } from "@/lib/client-store";
 import { formatAction, formatMoney } from "@/lib/format";
-import { getPoliciesByIds } from "@/lib/policies";
 
-export const dynamic = "force-dynamic";
+export default function ClaimWorkspace() {
+  const { id } = useParams();
+  const initial = loadClientStore();
+  const initialClaim = initial.claims.find((item) => item.id === id) || null;
+  const [claim, setClaim] = useState(initialClaim);
+  const [reviews, setReviews] = useState(
+    initial.reviews
+      .filter((review) => review.claim_id === id)
+      .sort((a, b) => (a.created_at < b.created_at ? 1 : -1)),
+  );
+  const [policies, setPolicies] = useState([]);
+  const [missing, setMissing] = useState(!initialClaim);
 
-export default async function ClaimWorkspace({ params }) {
-  const { id } = await params;
-  const claim = await getClaim(id);
-  if (!claim) notFound();
+  useEffect(() => {
+    const sync = () => {
+      const store = loadClientStore();
+      const found = store.claims.find((item) => item.id === id) || null;
+      const claimReviews = store.reviews
+        .filter((review) => review.claim_id === id)
+        .sort((a, b) => (a.created_at < b.created_at ? 1 : -1));
+      setClaim(found);
+      setReviews(claimReviews);
+      setMissing(!found);
+    };
+    queueMicrotask(sync);
+    return subscribeToClientStore(sync);
+  }, [id]);
 
-  const reviews = await getReviewsForClaim(id);
+  useEffect(() => {
+    fetch("/api/policies", { cache: "no-store" })
+      .then((response) => response.json())
+      .then((payload) => setPolicies(payload.policies || []))
+      .catch(() => {});
+  }, []);
+
+  if (missing && !claim) {
+    return (
+      <div className="page">
+        <Nav />
+        <p className="error">Claim not found in this browser session. Load sample claims again from the dashboard.</p>
+        <Link href="/">Back to queues</Link>
+      </div>
+    );
+  }
+
+  if (!claim) {
+    return (
+      <div className="page">
+        <Nav />
+        <p className="hint">Loading case…</p>
+      </div>
+    );
+  }
+
   const latestAgent = reviews.find((review) => review.actor === "agent");
-  const policyIds = [
-    ...(latestAgent?.retrieved_policy_ids || []),
-    ...(latestAgent?.cited_policy_ids || []),
-  ];
-  const policies = await getPoliciesByIds(policyIds);
   const policyMap = Object.fromEntries(policies.map((policy) => [policy.id, policy]));
 
   return (
